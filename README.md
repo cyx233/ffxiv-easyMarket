@@ -41,7 +41,7 @@ async def fetch_example_results():
         api_key="YOUR PRIVATE KEY" # 可选
         )
 
-    result = await client.get_recipe_route("复制长椅")
+    result = await client.get_recipe_route("复制长椅", amount=2)
     result.display()
 
     await client.close()
