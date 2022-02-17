@@ -1,3 +1,4 @@
+from copy import copy
 import os
 import json
 from pkg_resources import ensure_directory
@@ -47,7 +48,8 @@ class Memory:
         result = await self.client.index_search(
             name=item_name,
             indexes=['Item'],
-            columns=['ID', 'Name', 'PriceMid', 'Recipes'],
+            columns=['ID', 'Name', 'PriceMid', 'Recipes',
+                     'GameContentLinks.GilShopItem'],
             string_algo='match',
             language='zh',
             per_page=1
@@ -55,13 +57,19 @@ class Memory:
         if result['Pagination']['ResultsTotal'] > 0:
             if result['Results'][0]['Name'] == item_name:
                 data = result['Results'][0]
+                if data['GameContentLinks']['GilShopItem'] is None:
+                    del data['PriceMid']
+                if data['Recipes'] is None:
+                    del data['Recipes']
+                del data['GameContentLinks']
+                del data['Name']
                 self.item_memory[item_name] = data
                 return data
         return
 
     async def get_recipe(self, recipe_id):
-        if recipe_id in self.recipe_memory:
-            return self.recipe_memory[recipe_id]
+        if str(recipe_id) in self.recipe_memory:
+            return self.recipe_memory[str(recipe_id)]
         time.sleep(1/self.post_per_sec)
         columns = ['AmountIngredient{}'.format(i)for i in range(10)] +\
             ["ItemIngredient{}.Name".format(i)for i in range(10)] +\
@@ -81,17 +89,18 @@ class Memory:
                 temp.append({'amount': result['AmountIngredient{}'.format(
                     i)], 'name': result['ItemIngredient{}'.format(i)]['Name']})
         data = [temp, result["AmountResult"]]
-        self.recipe_memory[recipe_id] = data
+        self.recipe_memory[str(recipe_id)] = data
         return data
 
-    def get_board_price(self, item_id, price_threshold=0.1, time_limit=1200):
+    def get_board_price(self, item_id, price_threshold=0.1, time_limit=1200, need=1):
         if str(item_id) in self.price_memory:
-            if time.time() - self.price_memory[str(item_id)]['time'] < time_limit:
+            if int(time.time()) - self.price_memory[str(item_id)]['time'] < time_limit:
                 return self.price_memory[str(item_id)]['buy'], self.price_memory[str(item_id)]['sale']
         assert price_threshold >= 0
         if item_id not in self.marketable:
             return
         url = "https://universalis.app/api/{}/{}".format(self.server, item_id)
+        time.sleep(1/self.post_per_sec)
         r = requests.get(url)
         if r.status_code == 200:
             result = r.json()
@@ -103,12 +112,15 @@ class Memory:
             for i in result['listings']:
                 price = i['pricePerUnit']
                 quantity = i['quantity']
-                if price <= best_price*(1+price_threshold):
+                if price <= best_price*(1+price_threshold) or amount < need:
                     money += quantity*price
                     amount += quantity
                     if amount > 99:
                         break
-            avg_buy = money/amount
+                else:
+                    break
+            avg_buy = (money*1.05)/amount
+            buy_amount = amount
 
             money = 0
             amount = 0
@@ -116,21 +128,45 @@ class Memory:
             for i in result['recentHistory']:
                 price = i['pricePerUnit']
                 quantity = i['quantity']
-                if price <= best_price*(1+price_threshold):
+                if price <= avg_buy*5:
                     money += quantity*price
                     amount += quantity
                     if amount > 99:
                         break
+                else:
+                    continue
             if amount > 0:
-                avg_sale = money/amount
+                avg_sale = (money*0.95)/amount
 
-            self.price_memory[item_id] = {
-                'time': time.time(), 'buy': avg_buy, 'sale': avg_sale}
+            if buy_amount > 99:
+                self.price_memory[item_id] = {'time': int(
+                    time.time()), 'buy': avg_buy, 'sale': avg_sale}
             return avg_buy, avg_sale
         else:
-            price("Network failed when get price!")
+            print("Network failed when get price!")
 
-    def close(self):
+    async def get_item_by_id(self, item_id):
+        time.sleep(1/self.post_per_sec)
+        data = await self.client.index_by_id(
+            index='Item',
+            content_id=item_id,
+            columns=['ID', 'Name', 'PriceMid', 'Recipes',
+                     'GameContentLinks.GilShopItem'],
+            language='zh',
+        )
+        if data is not None:
+            item_name = copy(data['Name'])
+            if data['GameContentLinks']['GilShopItem'] is None:
+                del data['PriceMid']
+            if data['Recipes'] is None:
+                del data['Recipes']
+            del data['GameContentLinks']
+            del data['Name']
+            self.item_memory[item_name] = data
+            return item_name, data
+        return
+
+    def save(self):
         with open(self.item_path, "w") as f:
             json.dump(self.item_memory, f, ensure_ascii=False)
         with open(self.recipe_path, "w") as f:

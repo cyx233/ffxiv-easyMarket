@@ -27,20 +27,18 @@ class Ingredient:
         if data is None:
             return
         self.item_id = data['ID']
-        if self.item_id > 41:
+        if "PriceMid" in data:
             self.npc_price = data['PriceMid']
 
-        price = memory_client.get_board_price(self.item_id)
+        price = memory_client.get_board_price(
+            self.item_id, need=self.need_amount)
         if price is not None:
             self.board_price, self.board_sale_price = price
 
-        if self.npc_price == BIG_NUMBER:
-            self.best_buy_price = min(
-                self.npc_price, self.board_price)
-        else:
-            self.best_buy_price = self.board_price
+        self.best_buy_price = min(
+            self.npc_price, self.board_price)
 
-        if data['Recipes'] is not None:
+        if 'Recipes' in data:
             for i in data['Recipes']:
                 self.recipe_id.append(i['ID'])
         else:
@@ -87,7 +85,7 @@ class Ingredient:
             type_name = "素材"
         indent = "\t"*rank
         info = indent + \
-            "{}:{}*{}".format(type_name, self.item_name, self.need_amount)
+            "{}:{}*{:.1f}".format(type_name, self.item_name, self.need_amount)
         price_info = ", 最优为"
         if self.best_price == self.npc_price:
             price_info += " npc:"
@@ -106,13 +104,20 @@ class Ingredient:
 
         for index, recipe in enumerate(self.recipes):
             print(indent+"\t配方{}:".format(index))
-            print(
-                indent+"\t素材:{:.2f}, 半成品:{:.2f}, 最优线路:{:.2f}".format(recipe[1], recipe[2], recipe[3]))
+            if recipe[1] == recipe[2]:
+                print(
+                    indent+"\t素材:{:.2f}, 最优线路:{:.2f}".format(recipe[1], recipe[3]))
+            else:
+                print(
+                    indent+"\t素材:{:.2f}, 半成品:{:.2f}, 最优线路:{:.2f}".format(recipe[1], recipe[2], recipe[3]))
+
             for i in recipe[0]:
                 i.display(rank+2)
 
-        if rank == 0 and self.board_price < BIG_NUMBER:
+        if rank == 0:
             print("{:-^50s}".format("利润核算"))
+            if self.npc_price < BIG_NUMBER:
+                print("npc购买成本:{:.2f}/个".format(self.npc_price))
             print("最优成本:{:.2f}/个".format(self.best_price))
             print("预估售价:{:.2f}/个".format(self.board_sale_price))
             interest = self.board_sale_price-self.best_price

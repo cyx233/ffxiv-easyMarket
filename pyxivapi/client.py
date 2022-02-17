@@ -193,11 +193,6 @@ class XIVAPIClient:
         if response.status == 200:
             return await response.json()
 
-        if response.status == 400:
-            raise XIVAPIBadRequest(
-                "Request was bad. Please check your parameters.")
-
-        if response.status == 401:
             raise XIVAPIForbidden(
                 "Request was refused. Possibly due to an invalid API key.")
 
