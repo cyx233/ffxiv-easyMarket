@@ -92,10 +92,10 @@ class Memory:
         self.recipe_memory[str(recipe_id)] = data
         return data
 
-    def get_board_price(self, item_id, price_threshold=0.1, time_limit=1200, need=1):
+    def get_board_price(self, item_id, price_threshold=0.1, time_limit=3600, need=1):
         if str(item_id) in self.price_memory:
             if int(time.time()) - self.price_memory[str(item_id)]['time'] < time_limit:
-                return self.price_memory[str(item_id)]['buy'], self.price_memory[str(item_id)]['sale']
+                return self.price_memory[str(item_id)]['buy'], self.price_memory[str(item_id)]['sale'], self.price_memory[str(item_id)]['sale_per_day']
         assert price_threshold >= 0
         if item_id not in self.marketable:
             return
@@ -122,6 +122,8 @@ class Memory:
             avg_buy = (money*1.05)/amount
             buy_amount = amount
 
+            url = "https://universalis.app/api/history/{}/{}".format(
+                self.server, item_id)
             money = 0
             amount = 0
             avg_sale = 0
@@ -140,8 +142,8 @@ class Memory:
 
             if buy_amount > 99:
                 self.price_memory[item_id] = {'time': int(
-                    time.time()), 'buy': avg_buy, 'sale': avg_sale}
-            return avg_buy, avg_sale
+                    time.time()), 'buy': avg_buy, 'sale': avg_sale, 'sale_per_day': sale_per_day}
+            return avg_buy, avg_sale, sale_per_day
         else:
             print("Network failed when get price!")
 
@@ -173,6 +175,12 @@ class Memory:
             json.dump(self.recipe_memory, f, ensure_ascii=False)
         with open(self.price_path, "w") as f:
             json.dump(self.price_memory, f, ensure_ascii=False)
+
+    def clear(self):
+        self.item_memory = {}
+        self.recipe_memory = {}
+        self.price_memory = {}
+        self.save()
 
 
 memory_client = Memory()

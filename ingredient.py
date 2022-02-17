@@ -33,7 +33,7 @@ class Ingredient:
         price = memory_client.get_board_price(
             self.item_id, need=self.need_amount)
         if price is not None:
-            self.board_price, self.board_sale_price = price
+            self.board_price, self.board_sale_price, self.sale_per_day = price
 
         self.best_buy_price = min(
             self.npc_price, self.board_price)
@@ -75,9 +75,12 @@ class Ingredient:
             self.best_price = min(self.best_price, best_price)
         self.best_price = min(self.best_price, self.best_buy_price)
 
-    def display(self, rank=0):
+    def display(self, rank=0, verbose=False):
         if rank == 0:
-            print("{:=^50s}".format("查询结果"))
+            if verbose:
+                print("{:=^50s}".format("详细结果"))
+            else:
+                print("{:=^50s}".format("简略结果"))
             type_name = "成品"
         elif len(self.recipes) > 0:
             type_name = "半成品"
@@ -86,15 +89,18 @@ class Ingredient:
         indent = "\t"*rank
         info = indent + \
             "{}:{}*{:.1f}".format(type_name, self.item_name, self.need_amount)
+        if self.best_buy_price == BIG_NUMBER:
+            print(info+" ,未找到结果")
+            return
         price_info = ", 最优为"
         if self.best_price == self.npc_price:
             price_info += " npc:"
         elif self.best_price == self.board_price:
             price_info += " 板子:"
         elif self.best_price == self.direct_price:
-            price_info += " 半成品:"
+            price_info += " 半成品合成:"
         elif self.best_price == self.direct_price:
-            price_info += " 原料:"
+            price_info += " 素材合成:"
         else:
             price_info += " 复杂线路:"
 
@@ -102,17 +108,18 @@ class Ingredient:
             self.best_price, self.best_price*self.need_amount)
         print(info+price_info)
 
-        for index, recipe in enumerate(self.recipes):
-            print(indent+"\t配方{}:".format(index))
-            if recipe[1] == recipe[2]:
-                print(
-                    indent+"\t素材:{:.2f}, 最优线路:{:.2f}".format(recipe[1], recipe[3]))
-            else:
-                print(
-                    indent+"\t素材:{:.2f}, 半成品:{:.2f}, 最优线路:{:.2f}".format(recipe[1], recipe[2], recipe[3]))
+        if verbose:
+            for index, recipe in enumerate(self.recipes):
+                print(indent+"\t配方{}:".format(index))
+                if recipe[1] == recipe[2]:
+                    print(
+                        indent+"\t素材:{:.2f}, 最优线路:{:.2f}".format(recipe[1], recipe[3]))
+                else:
+                    print(
+                        indent+"\t素材:{:.2f}, 半成品:{:.2f}, 最优线路:{:.2f}".format(recipe[1], recipe[2], recipe[3]))
 
-            for i in recipe[0]:
-                i.display(rank+2)
+                for i in recipe[0]:
+                    i.display(rank+2)
 
         if rank == 0:
             print("{:-^50s}".format("利润核算"))
@@ -122,6 +129,9 @@ class Ingredient:
             print("预估售价:{:.2f}/个".format(self.board_sale_price))
             interest = self.board_sale_price-self.best_price
             print("利润:{:.2f}/个".format(interest))
-            print("总利润:{:.2f}".format(interest*self.need_amount))
             print("利润率:{:.2%}".format(interest/self.best_price))
+            print("每日售出:{:.2f}".format(self.sale_per_day))
+            print("每日利润上限:{:.2f}".format(self.sale_per_day*interest))
+            print("总利润:{:.2f}".format(self.need_amount*interest))
+            print("最短售出时间:{:.2f}天".format(self.need_amount/self.sale_per_day))
             print("{:=^50s}".format("查询结束"))
