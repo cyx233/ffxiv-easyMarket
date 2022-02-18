@@ -136,8 +136,10 @@ class Memory:
                         item_data['listings'], best_price, price_threshold, need)
                     if buy_amount == 0:
                         avg_buy = BIG_NUMBER
+                    else:
+                        avg_buy *= 1.05
                 ans[item_data['itemID']] = {'time': int(
-                    time.time()), 'buy': avg_buy*1.05, 'sale': 0, 'amount': buy_amount, 'sale_per_day': 0}
+                    time.time()), 'buy': avg_buy, 'sale': 0, 'amount': buy_amount, 'sale_per_day': 0}
         else:
             print("Network failed when get price!")
 
@@ -155,10 +157,13 @@ class Memory:
                 if len(item_data['entries']) > 0:
                     best_price = ans[item_data['itemID']]['buy']
                     if best_price == BIG_NUMBER:
+                        print("here")
                         for entry in item_data['entries']:
                             best_price = min(best_price, entry['pricePerUnit'])
+                        print(best_price)
                     avg_sale, _ = self.get_avg_price(
                         item_data['entries'], best_price, price_threshold, 0)
+                avg_sale *= 0.95
                 ans[item_data['itemID']]['sale'] = avg_sale
                 ans[item_data['itemID']
                     ]['sale_per_day'] = item_data['regularSaleVelocity']
