@@ -20,13 +20,12 @@ class MarketClient:
     async def get_recipe_route(self, item_name, amount=1):
         root = Ingredient(item_name, amount)
         await root.get_ingredients()
+        root.update_price()
         return root
 
     async def get_recipe_route_by_id(self, item_id, amount=1):
         item_name, _ = await memory_client.get_item_by_id(item_id)
-        root = Ingredient(item_name, amount)
-        await root.get_ingredients()
-        return root
+        return await self.get_recipe_route(item_name, amount)
 
     async def close(self):
         memory_client.save()

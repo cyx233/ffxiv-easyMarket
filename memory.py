@@ -1,11 +1,11 @@
 from copy import copy
 import os
 import json
-from pkg_resources import ensure_directory
 import requests
 import time
 
 from easyMarket.pyxivapi.client import XIVAPIClient
+BIG_NUMBER = 0x3fffffff
 
 
 class Memory:
@@ -34,9 +34,6 @@ class Memory:
             self.price_memory = {}
         self.client: XIVAPIClient = None
 
-        url = "https://universalis.app/api/marketable"
-        r = requests.get(url)
-        self.marketable = set(r.json())
         dir_path = os.path.abspath(os.path.dirname(__file__))
         self.file_path = os.path.join(dir_path, "price_memory.json")
         self.server = "豆豆柴"
@@ -92,60 +89,84 @@ class Memory:
         self.recipe_memory[str(recipe_id)] = data
         return data
 
-    def get_board_price(self, item_id, price_threshold=0.1, time_limit=3600, need=1):
-        if str(item_id) in self.price_memory:
-            if int(time.time()) - self.price_memory[str(item_id)]['time'] < time_limit:
-                return self.price_memory[str(item_id)]['buy'], self.price_memory[str(item_id)]['sale'], self.price_memory[str(item_id)]['sale_per_day']
+    def get_avg_price(self, data, best_price, price_threshold, need):
+        amount = 0
+        money = 0
+        for i in data:
+            price = i['pricePerUnit']
+            quantity = i['quantity']
+            if price <= best_price*(1+price_threshold) or amount < need:
+                money += quantity*price
+                amount += quantity
+        if amount > 0:
+            return money/amount, amount
+        else:
+            return 0, 0
+
+    def get_board_price(self, item_ids, price_threshold=0.2, time_limit=3600, need=1):
+        ans = {}
+        query = []
+        for item_id in item_ids:
+            if str(item_id) in self.price_memory:
+                if int(time.time()) - self.price_memory[str(item_id)]['time'] < time_limit:
+                    if self.price_memory[str(item_id)]['amount'] > need:
+                        ans[item_id] = self.price_memory[str(item_id)]
+            if item_id not in ans:
+                query.append(str(item_id))
+        if len(query) == 0:
+            return ans
         assert price_threshold >= 0
-        if item_id not in self.marketable:
-            return
-        url = "https://universalis.app/api/{}/{}".format(self.server, item_id)
+        url = "https://universalis.app/api/{}/{}".format(
+            self.server, ",".join(query))
         time.sleep(1/self.post_per_sec)
-        r = requests.get(url)
+        r = requests.get(url, params={"entries": 0})
+
         if r.status_code == 200:
             result = r.json()
-            if len(result['listings']) == 0:
-                return
-            best_price = result["listings"][0]['pricePerUnit']
-            amount = 0
-            money = 0
-            for i in result['listings']:
-                price = i['pricePerUnit']
-                quantity = i['quantity']
-                if price <= best_price*(1+price_threshold) or amount < need:
-                    money += quantity*price
-                    amount += quantity
-                    if amount > 99:
-                        break
-                else:
-                    break
-            avg_buy = (money*1.05)/amount
-            buy_amount = amount
-
-            url = "https://universalis.app/api/history/{}/{}".format(
-                self.server, item_id)
-            money = 0
-            amount = 0
-            avg_sale = 0
-            for i in result['recentHistory']:
-                price = i['pricePerUnit']
-                quantity = i['quantity']
-                if price <= avg_buy*5:
-                    money += quantity*price
-                    amount += quantity
-                    if amount > 99:
-                        break
-                else:
-                    continue
-            if amount > 0:
-                avg_sale = (money*0.95)/amount
-
-            if buy_amount > 99:
-                self.price_memory[item_id] = {'time': int(
-                    time.time()), 'buy': avg_buy, 'sale': avg_sale, 'sale_per_day': sale_per_day}
-            return avg_buy, avg_sale, sale_per_day
+            if "items" in result:
+                result = result['items']
+            else:
+                result = [result]
+            for item_data in result:
+                avg_buy = BIG_NUMBER
+                buy_amount = 0
+                if len(item_data['listings']) > 0:
+                    best_price = item_data["listings"][0]['pricePerUnit']
+                    avg_buy, buy_amount = self.get_avg_price(
+                        item_data['listings'], best_price, price_threshold, need)
+                    if buy_amount == 0:
+                        avg_buy = BIG_NUMBER
+                ans[item_data['itemID']] = {'time': int(
+                    time.time()), 'buy': avg_buy*1.05, 'sale': 0, 'amount': buy_amount, 'sale_per_day': 0}
         else:
             print("Network failed when get price!")
+
+        url = "https://universalis.app/api/history/{}/{}".format(
+            self.server, ",".join(query))
+        time.sleep(1/self.post_per_sec)
+        r = requests.get(url, params={"entriesWithin": 604800})
+        if r.status_code == 200:
+            result = r.json()
+            if "items" in result:
+                result = result['items']
+            else:
+                result = [result]
+            for item_data in result:
+                if len(item_data['entries']) > 0:
+                    best_price = ans[item_data['itemID']]['buy']
+                    if best_price == BIG_NUMBER:
+                        for entry in item_data['entries']:
+                            best_price = min(best_price, entry['pricePerUnit'])
+                    avg_sale, _ = self.get_avg_price(
+                        item_data['entries'], best_price, price_threshold, 0)
+                ans[item_data['itemID']]['sale'] = avg_sale
+                ans[item_data['itemID']
+                    ]['sale_per_day'] = item_data['regularSaleVelocity']
+        else:
+            print("Network failed when get history!")
+
+        self.price_memory.update(ans)
+        return ans
 
     async def get_item_by_id(self, item_id):
         time.sleep(1/self.post_per_sec)
