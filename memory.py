@@ -163,10 +163,9 @@ class Memory:
                         print(best_price)
                     avg_sale, _ = self.get_avg_price(
                         item_data['entries'], best_price, price_threshold, 0)
-                avg_sale *= 0.95
-                ans[item_data['itemID']]['sale'] = avg_sale
-                ans[item_data['itemID']
-                    ]['sale_per_day'] = item_data['regularSaleVelocity']
+                    ans[item_data['itemID']]['sale'] = avg_sale*0.95
+                    ans[item_data['itemID']
+                        ]['sale_per_day'] = item_data['regularSaleVelocity']
         else:
             print("Network failed when get history!")
 
