@@ -16,19 +16,19 @@ class Memory:
         self.price_path = os.path.join(dir_path, "price_memory.json")
         self.post_per_sec = 10
         if os.path.exists(self.item_path):
-            with open(self.item_path) as f:
+            with open(self.item_path, encoding="utf-8") as f:
                 self.item_memory = json.load(f)
         else:
             self.item_memory = {}
 
         if os.path.exists(self.recipe_path):
-            with open(self.recipe_path) as f:
+            with open(self.recipe_path, encoding="utf-8") as f:
                 self.recipe_memory = json.load(f)
         else:
             self.recipe_memory = {}
 
         if os.path.exists(self.price_path):
-            with open(self.price_path) as f:
+            with open(self.price_path, encoding="utf-8") as f:
                 self.price_memory = json.load(f)
         else:
             self.price_memory = {}
@@ -192,11 +192,11 @@ class Memory:
         return
 
     def save(self):
-        with open(self.item_path, "w") as f:
+        with open(self.item_path, "w", encoding="utf-8") as f:
             json.dump(self.item_memory, f, ensure_ascii=False)
-        with open(self.recipe_path, "w") as f:
+        with open(self.recipe_path, "w",encoding="utf-8") as f:
             json.dump(self.recipe_memory, f, ensure_ascii=False)
-        with open(self.price_path, "w") as f:
+        with open(self.price_path, "w",encoding="utf-8") as f:
             json.dump(self.price_memory, f, ensure_ascii=False)
 
     def clear(self):

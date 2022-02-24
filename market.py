@@ -10,7 +10,7 @@ from .memory import memory_client
 
 class MarketClient:
     def __init__(self, post_per_sec=10, api_key=None, server="豆豆柴"):
-        with open('ItemUI_id2name.json') as f:
+        with open('ItemUI_id2name.json',encoding="utf-8") as f:
             self.category_id2name = json.load(f)
             self.category_name2id = list(self.category_id2name.values())
         self.client = XIVAPIClient(api_key=api_key)
