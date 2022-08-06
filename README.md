@@ -3,6 +3,8 @@ combined XIVAPI and Universails
 
 REALLY EASY to get prices and recipes.
 
+[中文文档](README_cn.md)
+
 ## Features：
 
 1. search recipes and NPC prices from XIVAPI.
@@ -59,6 +61,6 @@ XIVAPI： https://xivapi.com/
 
 pyxivapi: https://github.com/xivapi/xivapi-py
 
-XIVAPI中文分支: https://cafemaker.wakingsands.com/
+XIVAPI Chinese: https://cafemaker.wakingsands.com/
 
 Universails: https://universalis.app/
