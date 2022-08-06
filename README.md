@@ -1,7 +1,72 @@
 # EasyMarket
+combined XIVAPI and Universails
+
+REALLY EASY to get prices and recipes.
+
+## Features：
+
+1. search recipes and NPC prices from XIVAPI.
+2. search market prices from Universalis.
+3. calculate costs and profits according to all possible recipes and give advices.
+
+## TODO：
+
+1. difference between hq and nq
+2. batch search
+
+## Requirements
+```txt
+python>=3.6.0
+asyncio
+aiohttp
+requests
+```
+
+## Examples
+
+
+### post_per_sec will cause access failures
+
+If you register at https://xivapi.com/, you can find the private key in the user interface, fill in api_key to increase the number of visits
+```python
+# main.py
+import asyncio
+import logging
+from easyMarket import MarketClient
+
+
+async def fetch_example_results():
+    client = MarketClient(
+        post_per_sec=10,
+        server="豆豆柴",
+        api_key="YOUR PRIVATE KEY" # 可选
+        )
+
+    result = await client.get_recipe_route("复制长椅", amount=2)
+    result.display()
+
+    await client.close()
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.WARN,
+                        format='%(message)s', datefmt='%H:%M')
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(fetch_example_results())
+```
+
+# Related Work
+XIVAPI： https://xivapi.com/
+
+pyxivapi: https://github.com/xivapi/xivapi-py
+
+XIVAPI中文分支: https://cafemaker.wakingsands.com/
+
+Universails: https://universalis.app/
+
+# EasyMarket
 自用工具, 整合了XIVAPI和Universails
 
-更加简易的市场体验，避免手动比价计算的烦恼。
+更加流场的市场体验，简化手动比价计算
 
 ## 目前功能：
 
@@ -51,46 +116,6 @@ if __name__ == '__main__':
                         format='%(message)s', datefmt='%H:%M')
     loop = asyncio.get_event_loop()
     loop.run_until_complete(fetch_example_results())
-```
-## 效果
-```bash
-$ python prepare.py
-=======================查询结果=======================
-成品:复制长椅*2, 最优为 复杂线路:18300.15/个, 总价36600.30
-        配方0:
-        素材:21744.15, 半成品:20625.67, 最优线路:18300.15
-                素材:风化涂料*2.0, 最优为 板子:2628.67/个, 总价5257.33
-                半成品:矮人银锭*12.0, 最优为 半成品:1607.41/个, 总价19288.97
-                        配方0:
-                        素材:1929.41, 半成品:1929.41, 最优线路:1929.41
-                                素材:暗银矿*48.0, 最优为 板子:289.00/个, 总价13872.00
-                                素材:灵银矿*12.0, 最优为 板子:234.41/个, 总价2812.97
-                                素材:火之水晶*84.0, 最优为 板子:77.00/个, 总价6468.00
-                        配方1:
-                        素材:1607.41, 半成品:1607.41, 最优线路:1607.41
-                                素材:暗银矿*48.0, 最优为 板子:289.00/个, 总价13872.00
-                                素材:灵银矿*12.0, 最优为 板子:234.41/个, 总价2812.97
-                                素材:冰之水晶*84.0, 最优为 板子:31.00/个, 总价2604.00
-                半成品:钛铜锭*12.0, 最优为 板子:945.00/个, 总价11340.00
-                        配方0:
-                        素材:1841.00, 半成品:1841.00, 最优线路:1841.00
-                                素材:钛铜矿*48.0, 最优为 板子:299.50/个, 总价14376.00
-                                素材:白钛矿*12.0, 最优为 板子:104.00/个, 总价1248.00
-                                素材:火之水晶*84.0, 最优为 板子:77.00/个, 总价6468.00
-                        配方1:
-                        素材:1519.00, 半成品:1519.00, 最优线路:1519.00
-                                素材:钛铜矿*48.0, 最优为 板子:299.50/个, 总价14376.00
-                                素材:白钛矿*12.0, 最优为 板子:104.00/个, 总价1248.00
-                                素材:冰之水晶*84.0, 最优为 板子:31.00/个, 总价2604.00
-                素材:冰之水晶*14.0, 最优为 板子:31.00/个, 总价434.00
-                素材:土之水晶*14.0, 最优为 板子:20.00/个, 总价280.00
------------------------利润核算-----------------------
-最优成本:18300.15/个
-预估售价:14975.00/个
-利润:-3325.15/个
-总利润:-6650.30
-利润率:-18.17%
-=======================查询结束=======================
 ```
 
 # 相关工作
